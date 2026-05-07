@@ -7,54 +7,65 @@
 using namespace std;
 using json = nlohmann::json;
 
-enum class Role {
+enum class Role 
+{
     User,
     Assistant
 };
 
-struct Message {
+struct Message 
+{
     Role role;
     string content;
 };
 
 // convert role enum to the string ollama expects
-string roleToString(Role role) {
+string roleToString(Role role) 
+{
     if (role == Role::User) return "user";
     return "assistant";
 }
 
-struct OllamaConfig {
+struct OllamaConfig 
+{
     string host = "http://localhost:11434";
     string model = "nemotron-3-super:cloud";
 
-    string chatUrl() const {
+    string chatUrl() const 
+    {
         return host + "/api/chat";
     }
 };
 
-struct ChatSession {
+struct ChatSession 
+{
     OllamaConfig config;
     vector<Message> history;
 };
 
-size_t writeCallback(char* ptr, size_t size, size_t nmemb, string* response) {
+size_t writeCallback(char* ptr, size_t size, size_t nmemb, string* response) 
+{
     response->append(ptr, size * nmemb);
     return size * nmemb;
 }
 
-string sendMessage(ChatSession& session, const string& userInput) {
+string sendMessage(ChatSession& session, const string& userInput) 
+{
     session.history.push_back({ Role::User, userInput });
 
     // build messages array from history
     json messages = json::array();
-    for (const Message& msg : session.history) {
-        messages.push_back({
+    for (const Message& msg : session.history) 
+    {
+        messages.push_back(
+        {
             {"role", roleToString(msg.role)},
             {"content", msg.content}
         });
     }
 
-    json requestBody = {
+    json requestBody = 
+    {
         {"model", session.config.model},
         {"messages", messages},
         {"stream", false}
@@ -79,14 +90,16 @@ string sendMessage(ChatSession& session, const string& userInput) {
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
-    if (result != CURLE_OK) {
+    if (result != CURLE_OK) 
+    {
         cerr << "curl error: " << curl_easy_strerror(result) << endl;
         return "";
     }
 
     json parsed = json::parse(responseStr);
 
-    if (parsed.contains("error")) {
+    if (parsed.contains("error")) 
+    {
         cerr << "Ollama error: " << parsed["error"] << endl;
         return "";
     }
@@ -97,7 +110,8 @@ string sendMessage(ChatSession& session, const string& userInput) {
     return reply;
 }
 
-int main() {
+int main() 
+{
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     ChatSession session;
@@ -109,7 +123,8 @@ int main() {
 
     string input;
 
-    while (true) {
+    while (true) 
+    {
         cout << "You: ";
         getline(cin, input);
 
