@@ -1,19 +1,19 @@
-#include <iostream>
+#pragma once
 #include <string>
 #include <fstream>
 #include <vector>
 #include <regex>
 #include <unordered_set>
 
-class VTTCleaner 
+class VTTCleaner
 {
 public:
-    static bool isIgnorable(const std::string& line) 
+    static bool isIgnorable(const std::string& line)
     {
         return line.find("WEBVTT") != std::string::npos ||
-                line.find("Kind:") != std::string::npos ||
-                line.find("Language:") != std::string::npos ||
-                line.empty();
+               line.find("Kind:") != std::string::npos ||
+               line.find("Language:") != std::string::npos ||
+               line.empty();
     }
 
     static bool isTimestampLine(const std::string& line)
@@ -27,13 +27,15 @@ public:
         return std::regex_replace(input, tagPattern, "");
     }
 
-    static std::string removeDuplicates(const std::vector<std::string>& lines) 
+    static std::string removeDuplicates(const std::vector<std::string>& lines)
     {
         std::unordered_set<std::string> seen;
         std::string result;
 
-        for (const auto& line : lines) {
-            if (seen.find(line) == seen.end()) {
+        for (const auto& line : lines)
+        {
+            if (seen.find(line) == seen.end())
+            {
                 seen.insert(line);
                 result += line + " ";
             }
@@ -46,22 +48,19 @@ public:
     {
         std::ifstream file(filename);
         std::string line;
-
         std::vector<std::string> cleanedLines;
 
-        while(std::getline(file, line))
+        while (std::getline(file, line))
         {
-            if(isIgnorable(line))
+            if (isIgnorable(line))
                 continue;
-            
-            if(isTimestampLine(line))
+            if (isTimestampLine(line))
                 continue;
 
             std::string cleaned = removeTags(line);
-
             cleaned = normalizeSpaces(cleaned);
 
-            if(!cleaned.empty())
+            if (!cleaned.empty())
                 cleanedLines.push_back(cleaned);
         }
 
@@ -79,11 +78,10 @@ private:
             if (c == ' ')
             {
                 if (!lastWasSpace)
-                {
                     result += c;
-                }
                 lastWasSpace = true;
-            } else
+            }
+            else
             {
                 result += c;
                 lastWasSpace = false;
@@ -92,5 +90,4 @@ private:
 
         return result;
     }
-
 };
