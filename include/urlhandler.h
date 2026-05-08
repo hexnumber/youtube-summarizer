@@ -124,7 +124,7 @@ public:
             summarize(session, transcript);
 
         if (action == Action::Anki || action == Action::Both)
-            std::cout << "Anki flashcard generation is not yet implemented." << std::endl << std::endl;
+            generateAnkiCards(session, transcript);
     }
 
 private:
@@ -153,6 +153,16 @@ private:
                              "highlighting the main topics and key points discussed:\n\n" + transcript;
 
         std::cout << "Summary: " << std::flush;
+        std::string response = sendMessage(session, prompt);
+        std::cout << response << std::endl << std::endl;
+    }
+
+    static void generateAnkiCards(ChatSession& session, const std::string& transcript)
+    {
+        std::string prompt = "Please generate Anki flashcards based on the following YouTube video transcript. "
+                             "Create concise question-answer pairs that cover the main topics and key points discussed:\n\n" + transcript;
+
+        std::cout << "Anki Flashcards: " << std::flush;
         std::string response = sendMessage(session, prompt);
         std::cout << response << std::endl << std::endl;
     }
