@@ -3,67 +3,78 @@
 #include <vector>
 #include <curl/curl.h>
 #include "json.hpp"
+#include "urlhandler.h"
 
-using namespace std;
 using json = nlohmann::json;
 
-enum class Role {
+enum class Role
+{
     User,
     Assistant
 };
 
-struct Message {
+struct Message
+{
     Role role;
-    string content;
+    std::string content;
 };
 
 // convert role enum to the string ollama expects
-string roleToString(Role role) {
+std::string roleToString(Role role)
+{
     if (role == Role::User) return "user";
     return "assistant";
 }
 
-struct OllamaConfig {
-    string host = "http://localhost:11434";
-    string model = "nemotron-3-super:cloud";
+struct OllamaConfig
+{
+    std::string host = "http://localhost:11434";
+    std::string model = "nemotron-3-super:cloud";
 
-    string chatUrl() const {
+    std::string chatUrl() const
+    {
         return host + "/api/chat";
     }
 };
 
-struct ChatSession {
+struct ChatSession
+{
     OllamaConfig config;
-    vector<Message> history;
+    std::vector<Message> history;
 };
 
-size_t writeCallback(char* ptr, size_t size, size_t nmemb, string* response) {
+size_t writeCallback(char* ptr, size_t size, size_t nmemb, std::string* response)
+{
     response->append(ptr, size * nmemb);
     return size * nmemb;
 }
 
-string sendMessage(ChatSession& session, const string& userInput) {
+std::string sendMessage(ChatSession& session, const std::string& userInput)
+{
     session.history.push_back({ Role::User, userInput });
 
     // build messages array from history
     json messages = json::array();
-    for (const Message& msg : session.history) {
-        messages.push_back({
+    for (const Message& msg : session.history)
+    {
+        messages.push_back(
+        {
             {"role", roleToString(msg.role)},
             {"content", msg.content}
         });
     }
 
-    json requestBody = {
+    json requestBody =
+    {
         {"model", session.config.model},
         {"messages", messages},
         {"stream", false}
     };
 
-    string requestStr = requestBody.dump();
+    std::string requestStr = requestBody.dump();
 
     CURL* curl = curl_easy_init();
-    string responseStr;
+    std::string responseStr;
 
     struct curl_slist* headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -79,50 +90,61 @@ string sendMessage(ChatSession& session, const string& userInput) {
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
-    if (result != CURLE_OK) {
-        cerr << "curl error: " << curl_easy_strerror(result) << endl;
+    if (result != CURLE_OK)
+    {
+        std::cerr << "curl error: " << curl_easy_strerror(result) << std::endl;
         return "";
     }
 
     json parsed = json::parse(responseStr);
 
-    if (parsed.contains("error")) {
-        cerr << "Ollama error: " << parsed["error"] << endl;
+    if (parsed.contains("error"))
+    {
+        std::cerr << "Ollama error: " << parsed["error"] << std::endl;
         return "";
     }
 
-    string reply = parsed["message"]["content"];
+    std::string reply = parsed["message"]["content"];
     session.history.push_back({ Role::Assistant, reply });
 
     return reply;
 }
 
-int main() {
+int main()
+{
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     ChatSession session;
 
-    cout << "=== YouTube Summarizer - Chat ===" << endl;
-    cout << "Model: " << session.config.model << endl;
-    cout << "Type 'exit' to quit" << endl;
-    cout << "---------------------------------" << endl << endl;
+    std::cout << "=== YouTube Summarizer - Chat ===" << std::endl;
+    std::cout << "Model: " << session.config.model << std::endl;
+    std::cout << "Paste a YouTube URL to summarize, or chat directly." << std::endl;
+    std::cout << "Type 'exit' to quit" << std::endl;
+    std::cout << "---------------------------------" << std::endl << std::endl;
 
-    string input;
+    std::string input;
 
-    while (true) {
-        cout << "You: ";
-        getline(cin, input);
+    while (true)
+    {
+        std::cout << "You: ";
+        std::getline(std::cin, input);
 
         if (input == "exit" || input == "quit") break;
         if (input.empty()) continue;
 
-        cout << endl << "Assistant: " << flush;
-        string response = sendMessage(session, input);
-        cout << response << endl << endl;
+        if (URLHandler::isYouTubeUrl(input))
+        {
+            URLHandler::handle(session, input);
+            continue;
+        }
+
+        std::cout << std::endl << "Assistant: " << std::flush;
+        std::string response = sendMessage(session, input);
+        std::cout << response << std::endl << std::endl;
     }
 
     curl_global_cleanup();
-    cout << "Bye!" << endl;
+    std::cout << "Bye!" << std::endl;
 
     return 0;
 }
