@@ -134,7 +134,7 @@ private:
     {
         std::cout << std::endl << "What would you like to do?" << std::endl;
         std::cout << "  [1] Summarize" << std::endl;
-        std::cout << "  [2] Anki flashcards  (coming soon)" << std::endl;
+        std::cout << "  [2] Anki flashcards" << std::endl;
         std::cout << "  [3] Both" << std::endl;
         std::cout << "Choice: " << std::flush;
 
