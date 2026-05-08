@@ -118,10 +118,41 @@ public:
             return;
         }
 
+        Action action = promptAction();
+
+        if (action == Action::Summarize || action == Action::Both)
+            summarize(session, transcript);
+
+        if (action == Action::Anki || action == Action::Both)
+            std::cout << "Anki flashcard generation is not yet implemented." << std::endl << std::endl;
+    }
+
+private:
+    enum class Action { Summarize, Anki, Both };
+
+    static Action promptAction()
+    {
+        std::cout << std::endl << "What would you like to do?" << std::endl;
+        std::cout << "  [1] Summarize" << std::endl;
+        std::cout << "  [2] Anki flashcards  (coming soon)" << std::endl;
+        std::cout << "  [3] Both" << std::endl;
+        std::cout << "Choice: " << std::flush;
+
+        std::string input;
+        std::getline(std::cin, input);
+        std::cout << std::endl;
+
+        if (input == "2") return Action::Anki;
+        if (input == "3") return Action::Both;
+        return Action::Summarize;
+    }
+
+    static void summarize(ChatSession& session, const std::string& transcript)
+    {
         std::string prompt = "Please summarize the following YouTube video transcript concisely, "
                              "highlighting the main topics and key points discussed:\n\n" + transcript;
 
-        std::cout << std::endl << "Summary: " << std::flush;
+        std::cout << "Summary: " << std::flush;
         std::string response = sendMessage(session, prompt);
         std::cout << response << std::endl << std::endl;
     }
