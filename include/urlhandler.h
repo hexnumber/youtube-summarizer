@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <filesystem>
 #include <cstdlib>
 #include "summarize.h"
@@ -124,7 +126,7 @@ public:
             summarize(session, transcript);
 
         if (action == Action::Anki || action == Action::Both)
-            generateAnkiCards(session, transcript);
+            generateAnkiCards(session, transcript, videoId);
     }
 
 private:
@@ -157,13 +159,51 @@ private:
         std::cout << response << std::endl << std::endl;
     }
 
-    static void generateAnkiCards(ChatSession& session, const std::string& transcript)
+    // removes ```lang ... ``` fences that LLMs often wrap output in
+    static std::string stripMarkdown(const std::string& text)
     {
-        std::string prompt = "Please generate Anki flashcards based on the following YouTube video transcript. "
-                             "Create concise question-answer pairs that cover the main topics and key points discussed:\n\n" + transcript;
+        std::string result;
+        std::istringstream stream(text);
+        std::string line;
+        bool inBlock = false;
 
-        std::cout << "Anki Flashcards: " << std::flush;
+        while (std::getline(stream, line))
+        {
+            if (line.rfind("```", 0) == 0) { inBlock = !inBlock; continue; }
+            if (!inBlock) result += line + "\n";
+        }
+
+        return result;
+    }
+
+    static void generateAnkiCards(ChatSession& session, const std::string& transcript, const std::string& videoId)
+    {
+        std::string prompt =
+            "Generate Anki flashcards from the following YouTube video transcript.\n\n"
+            "Output ONLY the flashcards as tab-separated values, one card per line, "
+            "with exactly two fields: question<TAB>answer. "
+            "Do not include a header row, markdown formatting, code fences, or any other text. "
+            "Keep questions concise and answers brief but complete.\n\n"
+            "Transcript:\n" + transcript;
+
+        std::cout << "Generating Anki flashcards..." << std::endl;
         std::string response = sendMessage(session, prompt);
-        std::cout << response << std::endl << std::endl;
+        std::string cards = stripMarkdown(response);
+
+        std::string filename = "anki_" + videoId + ".csv";
+        std::ofstream file(filename);
+        if (!file.is_open())
+        {
+            std::cerr << "Error: Could not write to " << filename << std::endl;
+            return;
+        }
+
+        file << "#separator:tab\n";
+        file << "#html:false\n";
+        file << cards;
+        file.close();
+
+        std::cout << cards << std::endl;
+        std::cout << "Anki flashcards saved to: " << filename << std::endl << std::endl;
     }
 };
