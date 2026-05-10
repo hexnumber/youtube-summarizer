@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QScrollBar>
 #include <QThread>
+#include <QStackedWidget>
 
 // ── Stylesheets ───────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ static const char* DARK_QSS = R"(
     QWidget#header                { background: #252526; border-bottom: 1px solid #3e3e42; }
     QWidget#actionBar             { background: #2d2d30; border-top:    1px solid #3e3e42; }
     QWidget#inputBar              { background: #252526; border-top:    1px solid #3e3e42; }
+    QWidget#settingsContent       { background: #1e1e1e; }
     QLabel                        { background: transparent; color: #cccccc; }
     QLabel#title                  { font-size: 15px; font-weight: bold; }
     QLabel#actionLabel            { color: #888888; font-size: 13px; }
@@ -37,10 +39,14 @@ static const char* DARK_QSS = R"(
     QPushButton#sendBtn:hover     { background: #1a8ad4; }
     QPushButton#sendBtn:pressed   { background: #005a9e; }
     QPushButton#sendBtn:disabled  { background: #4a4a4a; color: #777777; }
-    QPushButton#themeBtn          { background: transparent; color: #cccccc;
+    QPushButton#themeBtn,
+    QPushButton#settingsBtn,
+    QPushButton#backBtn           { background: transparent; color: #cccccc;
                                     border: 1px solid #555555; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
-    QPushButton#themeBtn:hover    { background: #3c3c3c; }
+    QPushButton#themeBtn:hover,
+    QPushButton#settingsBtn:hover,
+    QPushButton#backBtn:hover     { background: #3c3c3c; }
     QRadioButton                  { background: transparent; color: #cccccc; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #1e1e1e; width: 8px; margin: 0; }
@@ -55,6 +61,7 @@ static const char* LIGHT_QSS = R"(
     QWidget#header                { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
     QWidget#actionBar             { background: #f0f0f0; border-top:    1px solid #e0e0e0; }
     QWidget#inputBar              { background: #ffffff; border-top:    1px solid #e0e0e0; }
+    QWidget#settingsContent       { background: #f5f5f5; }
     QLabel                        { background: transparent; color: #1e1e1e; }
     QLabel#title                  { font-size: 15px; font-weight: bold; }
     QLabel#actionLabel            { color: #666666; font-size: 13px; }
@@ -70,10 +77,14 @@ static const char* LIGHT_QSS = R"(
     QPushButton#sendBtn:hover     { background: #106ebe; }
     QPushButton#sendBtn:pressed   { background: #005a9e; }
     QPushButton#sendBtn:disabled  { background: #cccccc; color: #888888; }
-    QPushButton#themeBtn          { background: transparent; color: #1e1e1e;
+    QPushButton#themeBtn,
+    QPushButton#settingsBtn,
+    QPushButton#backBtn           { background: transparent; color: #1e1e1e;
                                     border: 1px solid #cccccc; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
-    QPushButton#themeBtn:hover    { background: #e8e8e8; }
+    QPushButton#themeBtn:hover,
+    QPushButton#settingsBtn:hover,
+    QPushButton#backBtn:hover     { background: #e8e8e8; }
     QRadioButton                  { background: transparent; color: #1e1e1e; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #f5f5f5; width: 8px; margin: 0; }
@@ -109,6 +120,28 @@ void MainWindow::setupUi()
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
+    m_stack = new QStackedWidget();
+    m_stack->addWidget(buildChatPage());
+    m_stack->addWidget(buildSettingsPage());
+    root->addWidget(m_stack);
+
+    connect(m_sendButton,  &QPushButton::clicked,    this, &MainWindow::onSend);
+    connect(m_input,       &QLineEdit::returnPressed, this, &MainWindow::onSend);
+    connect(m_themeButton,         &QPushButton::clicked, this, &MainWindow::onToggleTheme);
+    connect(m_themeButtonSettings, &QPushButton::clicked, this, &MainWindow::onToggleTheme);
+    connect(m_settingsBtn, &QPushButton::clicked,    this, &MainWindow::onOpenSettings);
+    connect(m_backBtn,     &QPushButton::clicked,    this, &MainWindow::onCloseSettings);
+
+    applyTheme();
+}
+
+QWidget* MainWindow::buildChatPage()
+{
+    QWidget* page = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
     // Header
     QWidget* header = new QWidget();
     header->setObjectName("header");
@@ -119,6 +152,11 @@ void MainWindow::setupUi()
     QLabel* title = new QLabel("YouTube Summarizer");
     title->setObjectName("title");
 
+    m_settingsBtn = new QPushButton("Settings");
+    m_settingsBtn->setObjectName("settingsBtn");
+    m_settingsBtn->setCursor(Qt::PointingHandCursor);
+    m_settingsBtn->setFixedWidth(80);
+
     m_themeButton = new QPushButton("☀  Light");
     m_themeButton->setObjectName("themeBtn");
     m_themeButton->setCursor(Qt::PointingHandCursor);
@@ -127,13 +165,14 @@ void MainWindow::setupUi()
     headerLayout->addWidget(title);
     headerLayout->addStretch();
     headerLayout->addWidget(m_themeButton);
-    root->addWidget(header);
+    headerLayout->addWidget(m_settingsBtn);
+    layout->addWidget(header);
 
     // Output
     m_output = new QTextEdit();
     m_output->setObjectName("output");
     m_output->setReadOnly(true);
-    root->addWidget(m_output, 1);
+    layout->addWidget(m_output, 1);
 
     // Action bar
     QWidget* actionBar = new QWidget();
@@ -161,7 +200,7 @@ void MainWindow::setupUi()
     actionLayout->addWidget(rbAnki);
     actionLayout->addWidget(rbBoth);
     actionLayout->addStretch();
-    root->addWidget(actionBar);
+    layout->addWidget(actionBar);
 
     // Input bar
     QWidget* inputBar = new QWidget();
@@ -182,13 +221,51 @@ void MainWindow::setupUi()
 
     inputLayout->addWidget(m_input);
     inputLayout->addWidget(m_sendButton);
-    root->addWidget(inputBar);
+    layout->addWidget(inputBar);
 
-    connect(m_sendButton, &QPushButton::clicked,     this, &MainWindow::onSend);
-    connect(m_input,      &QLineEdit::returnPressed,  this, &MainWindow::onSend);
-    connect(m_themeButton,&QPushButton::clicked,     this, &MainWindow::onToggleTheme);
+    return page;
+}
 
-    applyTheme();
+QWidget* MainWindow::buildSettingsPage()
+{
+    QWidget* page = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    // Header
+    QWidget* header = new QWidget();
+    header->setObjectName("header");
+    header->setFixedHeight(52);
+    QHBoxLayout* headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(16, 0, 16, 0);
+    headerLayout->setSpacing(12);
+
+    m_backBtn = new QPushButton("← Back");
+    m_backBtn->setObjectName("backBtn");
+    m_backBtn->setCursor(Qt::PointingHandCursor);
+    m_backBtn->setFixedWidth(80);
+
+    QLabel* title = new QLabel("Settings");
+    title->setObjectName("title");
+
+    m_themeButtonSettings = new QPushButton("☀  Light");
+    m_themeButtonSettings->setObjectName("themeBtn");
+    m_themeButtonSettings->setCursor(Qt::PointingHandCursor);
+    m_themeButtonSettings->setFixedWidth(90);
+
+    headerLayout->addWidget(m_backBtn);
+    headerLayout->addWidget(title);
+    headerLayout->addStretch();
+    headerLayout->addWidget(m_themeButtonSettings);
+    layout->addWidget(header);
+
+    // Empty content area
+    QWidget* content = new QWidget();
+    content->setObjectName("settingsContent");
+    layout->addWidget(content, 1);
+
+    return page;
 }
 
 void MainWindow::setupWorker()
@@ -211,13 +288,27 @@ void MainWindow::setupWorker()
 void MainWindow::applyTheme()
 {
     qApp->setStyleSheet(m_darkMode ? DARK_QSS : LIGHT_QSS);
-    m_themeButton->setText(m_darkMode ? "☀  Light" : "☾  Dark");
+    const QString label = m_darkMode ? "☀  Light" : "☾  Dark";
+    m_themeButton->setText(label);
+    m_themeButtonSettings->setText(label);
 }
 
 void MainWindow::onToggleTheme()
 {
     m_darkMode = !m_darkMode;
     applyTheme();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+void MainWindow::onOpenSettings()
+{
+    m_stack->setCurrentIndex(1);
+}
+
+void MainWindow::onCloseSettings()
+{
+    m_stack->setCurrentIndex(0);
 }
 
 // ── Output helpers ────────────────────────────────────────────────────────────
