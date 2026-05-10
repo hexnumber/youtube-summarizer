@@ -17,11 +17,13 @@
 // ── Stylesheets ───────────────────────────────────────────────────────────────
 
 static const char* DARK_QSS = R"(
-    QMainWindow, QWidget          { background: #1e1e1e; }
+    QMainWindow                   { background: #1e1e1e; }
+    QMainWindow > QWidget         { background: #1e1e1e; }
     QWidget#header                { background: #252526; border-bottom: 1px solid #3e3e42; }
     QWidget#actionBar             { background: #2d2d30; border-top:    1px solid #3e3e42; }
     QWidget#inputBar              { background: #252526; border-top:    1px solid #3e3e42; }
-    QLabel#title                  { color: #cccccc; font-size: 15px; font-weight: bold; }
+    QLabel                        { background: transparent; color: #cccccc; }
+    QLabel#title                  { font-size: 15px; font-weight: bold; }
     QLabel#actionLabel            { color: #888888; font-size: 13px; }
     QTextEdit#output              { background: #1e1e1e; color: #cccccc;
                                     border: none; font-size: 13px; padding: 4px; }
@@ -39,7 +41,7 @@ static const char* DARK_QSS = R"(
                                     border: 1px solid #555555; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
     QPushButton#themeBtn:hover    { background: #3c3c3c; }
-    QRadioButton                  { color: #cccccc; font-size: 13px; }
+    QRadioButton                  { background: transparent; color: #cccccc; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #1e1e1e; width: 8px; margin: 0; }
     QScrollBar::handle:vertical   { background: #555555; border-radius: 4px; min-height: 20px; }
@@ -48,11 +50,13 @@ static const char* DARK_QSS = R"(
 )";
 
 static const char* LIGHT_QSS = R"(
-    QMainWindow, QWidget          { background: #f5f5f5; }
+    QMainWindow                   { background: #f5f5f5; }
+    QMainWindow > QWidget         { background: #f5f5f5; }
     QWidget#header                { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
     QWidget#actionBar             { background: #f0f0f0; border-top:    1px solid #e0e0e0; }
     QWidget#inputBar              { background: #ffffff; border-top:    1px solid #e0e0e0; }
-    QLabel#title                  { color: #1e1e1e; font-size: 15px; font-weight: bold; }
+    QLabel                        { background: transparent; color: #1e1e1e; }
+    QLabel#title                  { font-size: 15px; font-weight: bold; }
     QLabel#actionLabel            { color: #666666; font-size: 13px; }
     QTextEdit#output              { background: #ffffff; color: #1e1e1e;
                                     border: none; font-size: 13px; padding: 4px; }
@@ -70,7 +74,7 @@ static const char* LIGHT_QSS = R"(
                                     border: 1px solid #cccccc; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
     QPushButton#themeBtn:hover    { background: #e8e8e8; }
-    QRadioButton                  { color: #1e1e1e; font-size: 13px; }
+    QRadioButton                  { background: transparent; color: #1e1e1e; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #f5f5f5; width: 8px; margin: 0; }
     QScrollBar::handle:vertical   { background: #c0c0c0; border-radius: 4px; min-height: 20px; }
