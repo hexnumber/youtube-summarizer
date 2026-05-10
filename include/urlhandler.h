@@ -7,9 +7,7 @@
 #include <cstdlib>
 #include "summarize.h"
 
-// forward declarations — defined in main.cpp
-struct ChatSession;
-std::string sendMessage(ChatSession& session, const std::string& userInput);
+#include "ollama.h"
 
 class URLHandler
 {
