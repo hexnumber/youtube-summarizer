@@ -6,6 +6,7 @@
 class QTextEdit;
 class QLineEdit;
 class QPushButton;
+class QComboBox;
 class QStackedWidget;
 class Worker;
 
@@ -20,6 +21,9 @@ public:
 signals:
     void requestUrl(const QString& url, int action);
     void requestChat(const QString& message);
+    void requestFetchModels();
+    void requestSetModel(const QString& model);
+    void requestSetSubtitleLang(const QString& lang);
 
 private slots:
     void onSend();
@@ -28,6 +32,7 @@ private slots:
     void onCloseSettings();
     void onWorkerOutput(const QString& text, const QString& type);
     void onWorkerDone();
+    void onModelsReady(const QStringList& models, const QString& current);
 
 private:
     void     setupUi();
@@ -40,15 +45,18 @@ private:
     QString  buildMessageHtml(const QString& label, const QString& labelColor,
                                const QString& text) const;
 
-    QStackedWidget* m_stack       = nullptr;
-    QTextEdit*      m_output      = nullptr;
-    QLineEdit*      m_input       = nullptr;
-    QPushButton*    m_sendButton  = nullptr;
+    QStackedWidget* m_stack              = nullptr;
+    QTextEdit*      m_output             = nullptr;
+    QLineEdit*      m_input              = nullptr;
+    QPushButton*    m_sendButton         = nullptr;
     QPushButton*    m_settingsBtn        = nullptr;
     QPushButton*    m_themeButton        = nullptr;
     QPushButton*    m_themeButtonSettings= nullptr;
     QPushButton*    m_backBtn            = nullptr;
-    QButtonGroup*   m_actionGroup = nullptr;
+    QPushButton*    m_refreshBtn         = nullptr;
+    QComboBox*      m_modelCombo         = nullptr;
+    QComboBox*      m_langCombo          = nullptr;
+    QButtonGroup*   m_actionGroup        = nullptr;
 
     QThread* m_thread = nullptr;
     Worker*  m_worker = nullptr;

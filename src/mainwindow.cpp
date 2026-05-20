@@ -8,12 +8,14 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QButtonGroup>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QScrollBar>
 #include <QThread>
 #include <QStackedWidget>
+#include <QComboBox>
 
 // ── Stylesheets ───────────────────────────────────────────────────────────────
 
@@ -47,6 +49,19 @@ static const char* DARK_QSS = R"(
     QPushButton#themeBtn:hover,
     QPushButton#settingsBtn:hover,
     QPushButton#backBtn:hover     { background: #3c3c3c; }
+    QPushButton#refreshBtn        { background: transparent; color: #cccccc;
+                                    border: 1px solid #555555; border-radius: 6px;
+                                    padding: 4px 8px; font-size: 15px; min-width: 32px; }
+    QPushButton#refreshBtn:hover  { background: #3c3c3c; }
+    QLabel#settingsLabel          { color: #888888; font-size: 11px; }
+    QComboBox                     { background: #3c3c3c; color: #cccccc;
+                                    border: 1px solid #555555; border-radius: 6px;
+                                    padding: 4px 8px; font-size: 13px; min-height: 28px; }
+    QComboBox:focus               { border-color: #007acc; }
+    QComboBox::drop-down          { border: none; }
+    QComboBox QAbstractItemView   { background: #2d2d30; color: #cccccc;
+                                    border: 1px solid #555555;
+                                    selection-background-color: #094771; }
     QRadioButton                  { background: transparent; color: #cccccc; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #1e1e1e; width: 8px; margin: 0; }
@@ -85,6 +100,19 @@ static const char* LIGHT_QSS = R"(
     QPushButton#themeBtn:hover,
     QPushButton#settingsBtn:hover,
     QPushButton#backBtn:hover     { background: #e8e8e8; }
+    QPushButton#refreshBtn        { background: transparent; color: #1e1e1e;
+                                    border: 1px solid #cccccc; border-radius: 6px;
+                                    padding: 4px 8px; font-size: 15px; min-width: 32px; }
+    QPushButton#refreshBtn:hover  { background: #e8e8e8; }
+    QLabel#settingsLabel          { color: #666666; font-size: 11px; }
+    QComboBox                     { background: #ffffff; color: #1e1e1e;
+                                    border: 1px solid #cccccc; border-radius: 6px;
+                                    padding: 4px 8px; font-size: 13px; min-height: 28px; }
+    QComboBox:focus               { border-color: #0078d4; }
+    QComboBox::drop-down          { border: none; }
+    QComboBox QAbstractItemView   { background: #ffffff; color: #1e1e1e;
+                                    border: 1px solid #cccccc;
+                                    selection-background-color: #cce4f7; }
     QRadioButton                  { background: transparent; color: #1e1e1e; font-size: 13px; }
     QRadioButton::indicator       { width: 14px; height: 14px; }
     QScrollBar:vertical           { background: #f5f5f5; width: 8px; margin: 0; }
@@ -131,6 +159,11 @@ void MainWindow::setupUi()
     connect(m_themeButtonSettings, &QPushButton::clicked, this, &MainWindow::onToggleTheme);
     connect(m_settingsBtn, &QPushButton::clicked,    this, &MainWindow::onOpenSettings);
     connect(m_backBtn,     &QPushButton::clicked,    this, &MainWindow::onCloseSettings);
+    connect(m_refreshBtn,  &QPushButton::clicked,    this, &MainWindow::requestFetchModels);
+    connect(m_modelCombo,  &QComboBox::currentTextChanged,
+            this, [this](const QString& model) { emit requestSetModel(model); });
+    connect(m_langCombo,   &QComboBox::currentTextChanged,
+            this, [this](const QString& lang)  { emit requestSetSubtitleLang(lang); });
 
     applyTheme();
 }
@@ -260,9 +293,57 @@ QWidget* MainWindow::buildSettingsPage()
     headerLayout->addWidget(m_themeButtonSettings);
     layout->addWidget(header);
 
-    // Empty content area
+    // Content
     QWidget* content = new QWidget();
     content->setObjectName("settingsContent");
+    QVBoxLayout* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(32, 24, 32, 24);
+    contentLayout->setSpacing(4);
+
+    // ── Model selector ────────────────────────────────────────────────────────
+    QLabel* modelLabel = new QLabel("AI MODEL");
+    modelLabel->setObjectName("settingsLabel");
+
+    m_modelCombo = new QComboBox();
+    m_modelCombo->setPlaceholderText("Loading models…");
+    m_modelCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    m_refreshBtn = new QPushButton("⟳");
+    m_refreshBtn->setObjectName("refreshBtn");
+    m_refreshBtn->setCursor(Qt::PointingHandCursor);
+    m_refreshBtn->setToolTip("Refresh model list");
+
+    QHBoxLayout* modelRow = new QHBoxLayout();
+    modelRow->setSpacing(8);
+    modelRow->setContentsMargins(0, 0, 0, 0);
+    modelRow->addWidget(m_modelCombo);
+    modelRow->addWidget(m_refreshBtn);
+
+    contentLayout->addWidget(modelLabel);
+    contentLayout->addLayout(modelRow);
+    contentLayout->addSpacing(16);
+
+    // ── Subtitle language ─────────────────────────────────────────────────────
+    QLabel* langLabel = new QLabel("SUBTITLE LANGUAGE");
+    langLabel->setObjectName("settingsLabel");
+
+    m_langCombo = new QComboBox();
+    m_langCombo->setEditable(true);
+    m_langCombo->setMaximumWidth(220);
+    m_langCombo->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    const QStringList langs = {"de", "en", "fr", "es", "it", "pt",
+                                "ja", "zh-Hans", "ko", "nl", "ru",
+                                "ar", "pl", "tr", "sv", "da", "fi"};
+    m_langCombo->blockSignals(true);
+    m_langCombo->addItems(langs);
+    m_langCombo->setCurrentText(QString::fromStdString(URLHandler::SUBTITLE_LANG));
+    m_langCombo->blockSignals(false);
+
+    contentLayout->addWidget(langLabel);
+    contentLayout->addWidget(m_langCombo);
+    contentLayout->addStretch();
+
     layout->addWidget(content, 1);
 
     return page;
@@ -274,11 +355,15 @@ void MainWindow::setupWorker()
     m_worker = new Worker();
     m_worker->moveToThread(m_thread);
 
-    connect(m_thread, &QThread::finished,    m_worker, &QObject::deleteLater);
-    connect(m_worker, &Worker::output,       this,     &MainWindow::onWorkerOutput);
-    connect(m_worker, &Worker::done,         this,     &MainWindow::onWorkerDone);
-    connect(this, &MainWindow::requestUrl,   m_worker, &Worker::processUrl);
-    connect(this, &MainWindow::requestChat,  m_worker, &Worker::processChat);
+    connect(m_thread, &QThread::finished,       m_worker, &QObject::deleteLater);
+    connect(m_worker, &Worker::output,          this,     &MainWindow::onWorkerOutput);
+    connect(m_worker, &Worker::done,            this,     &MainWindow::onWorkerDone);
+    connect(m_worker, &Worker::modelsReady,     this,     &MainWindow::onModelsReady);
+    connect(this, &MainWindow::requestUrl,      m_worker, &Worker::processUrl);
+    connect(this, &MainWindow::requestChat,     m_worker, &Worker::processChat);
+    connect(this, &MainWindow::requestFetchModels,    m_worker, &Worker::fetchModels);
+    connect(this, &MainWindow::requestSetModel,       m_worker, &Worker::setModel);
+    connect(this, &MainWindow::requestSetSubtitleLang,m_worker, &Worker::setSubtitleLang);
 
     m_thread->start();
 }
@@ -304,6 +389,17 @@ void MainWindow::onToggleTheme()
 void MainWindow::onOpenSettings()
 {
     m_stack->setCurrentIndex(1);
+    emit requestFetchModels();
+}
+
+void MainWindow::onModelsReady(const QStringList& models, const QString& current)
+{
+    m_modelCombo->blockSignals(true);
+    m_modelCombo->clear();
+    m_modelCombo->addItems(models);
+    if (!current.isEmpty())
+        m_modelCombo->setCurrentText(current);
+    m_modelCombo->blockSignals(false);
 }
 
 void MainWindow::onCloseSettings()
