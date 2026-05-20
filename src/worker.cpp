@@ -1,9 +1,19 @@
 #include "worker.h"
 #include "urlhandler.h"
 #include "summarize.h"
+#include "json.hpp"
+#include <curl/curl.h>
 #include <sstream>
 #include <fstream>
 #include <cstdlib>
+
+using json = nlohmann::json;
+
+static size_t workerWriteCallback(char* ptr, size_t size, size_t nmemb, std::string* out)
+{
+    out->append(ptr, size * nmemb);
+    return size * nmemb;
+}
 
 Worker::Worker(QObject* parent) : QObject(parent) {}
 
@@ -117,4 +127,47 @@ void Worker::processUrl(const QString& url, int actionInt)
     }
 
     emit done();
+}
+
+void Worker::fetchModels()
+{
+    CURL* curl = curl_easy_init();
+    if (!curl) { emit modelsReady({}, QString::fromStdString(m_session.config.model)); return; }
+
+    std::string response;
+    std::string url = m_session.config.host + "/api/tags";
+
+    curl_easy_setopt(curl, CURLOPT_URL,           url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  workerWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA,      &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        10L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK)
+    {
+        emit modelsReady({}, QString::fromStdString(m_session.config.model));
+        return;
+    }
+
+    json parsed = json::parse(response, nullptr, false);
+    QStringList models;
+    if (!parsed.is_discarded() && parsed.contains("models"))
+    {
+        for (const auto& m : parsed["models"])
+            models << QString::fromStdString(m["name"].get<std::string>());
+    }
+
+    emit modelsReady(models, QString::fromStdString(m_session.config.model));
+}
+
+void Worker::setModel(const QString& model)
+{
+    m_session.config.model = model.toStdString();
+}
+
+void Worker::setSubtitleLang(const QString& lang)
+{
+    URLHandler::SUBTITLE_LANG = lang.toStdString();
 }
