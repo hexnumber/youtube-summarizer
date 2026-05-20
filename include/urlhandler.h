@@ -12,7 +12,7 @@
 class URLHandler
 {
 public:
-    inline static const std::string SUBTITLE_LANG = "de";
+    inline static std::string SUBTITLE_LANG = "de";
 
     static bool isYouTubeUrl(const std::string& input)
     {
