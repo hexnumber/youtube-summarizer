@@ -9,6 +9,7 @@ class QPushButton;
 class QComboBox;
 class QStackedWidget;
 class Worker;
+class QClipboard;
 
 class MainWindow : public QMainWindow
 {
@@ -33,6 +34,7 @@ private slots:
     void onWorkerOutput(const QString& text, const QString& type);
     void onWorkerDone();
     void onModelsReady(const QStringList& models, const QString& current);
+    void onCopyOutput();
 
 private:
     void     setupUi();
@@ -47,10 +49,12 @@ private:
 
     QStackedWidget* m_stack              = nullptr;
     QTextEdit*      m_output             = nullptr;
+    QString         m_lastOutput         = nullptr;
     QLineEdit*      m_input              = nullptr;
     QPushButton*    m_sendButton         = nullptr;
     QPushButton*    m_settingsBtn        = nullptr;
     QPushButton*    m_themeButton        = nullptr;
+    QPushButton*    m_copyBtn            = nullptr;
     QPushButton*    m_themeButtonSettings= nullptr;
     QPushButton*    m_backBtn            = nullptr;
     QPushButton*    m_refreshBtn         = nullptr;
