@@ -3,6 +3,7 @@
 #include "urlhandler.h"
 
 #include <QApplication>
+#include <QClipboard>
 #include <QTextEdit>
 #include <QLineEdit>
 #include <QPushButton>
@@ -16,6 +17,7 @@
 #include <QThread>
 #include <QStackedWidget>
 #include <QComboBox>
+#include <QTimer>
 
 // ── Stylesheets ───────────────────────────────────────────────────────────────
 
@@ -42,11 +44,13 @@ static const char* DARK_QSS = R"(
     QPushButton#sendBtn:pressed   { background: #005a9e; }
     QPushButton#sendBtn:disabled  { background: #4a4a4a; color: #777777; }
     QPushButton#themeBtn,
+    QPushButton#copyBtn,
     QPushButton#settingsBtn,
     QPushButton#backBtn           { background: transparent; color: #cccccc;
                                     border: 1px solid #555555; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
     QPushButton#themeBtn:hover,
+    QPushButton#copyBtn:hover,
     QPushButton#settingsBtn:hover,
     QPushButton#backBtn:hover     { background: #3c3c3c; }
     QPushButton#refreshBtn        { background: transparent; color: #cccccc;
@@ -93,11 +97,13 @@ static const char* LIGHT_QSS = R"(
     QPushButton#sendBtn:pressed   { background: #005a9e; }
     QPushButton#sendBtn:disabled  { background: #cccccc; color: #888888; }
     QPushButton#themeBtn,
+    QPushButton#copyBtn,
     QPushButton#settingsBtn,
     QPushButton#backBtn           { background: transparent; color: #1e1e1e;
                                     border: 1px solid #cccccc; border-radius: 6px;
                                     padding: 4px 10px; font-size: 13px; }
     QPushButton#themeBtn:hover,
+    QPushButton#copyBtn:hover,
     QPushButton#settingsBtn:hover,
     QPushButton#backBtn:hover     { background: #e8e8e8; }
     QPushButton#refreshBtn        { background: transparent; color: #1e1e1e;
@@ -156,6 +162,7 @@ void MainWindow::setupUi()
     connect(m_sendButton,  &QPushButton::clicked,    this, &MainWindow::onSend);
     connect(m_input,       &QLineEdit::returnPressed, this, &MainWindow::onSend);
     connect(m_themeButton,         &QPushButton::clicked, this, &MainWindow::onToggleTheme);
+    connect(m_copyBtn,     &QPushButton::clicked, this, &MainWindow::onCopyOutput);
     connect(m_themeButtonSettings, &QPushButton::clicked, this, &MainWindow::onToggleTheme);
     connect(m_settingsBtn, &QPushButton::clicked,    this, &MainWindow::onOpenSettings);
     connect(m_backBtn,     &QPushButton::clicked,    this, &MainWindow::onCloseSettings);
@@ -218,6 +225,11 @@ QWidget* MainWindow::buildChatPage()
     QLabel* actionLabel = new QLabel("Action:");
     actionLabel->setObjectName("actionLabel");
 
+    m_copyBtn = new QPushButton("Copy");
+    m_copyBtn->setObjectName("copyBtn");
+    m_copyBtn->setCursor(Qt::PointingHandCursor);
+    m_copyBtn->setFixedWidth(70);
+
     auto* rbSummarize = new QRadioButton("Summarize");
     auto* rbAnki      = new QRadioButton("Anki Cards");
     auto* rbBoth      = new QRadioButton("Both");
@@ -233,6 +245,7 @@ QWidget* MainWindow::buildChatPage()
     actionLayout->addWidget(rbAnki);
     actionLayout->addWidget(rbBoth);
     actionLayout->addStretch();
+    actionLayout->addWidget(m_copyBtn);
     layout->addWidget(actionBar);
 
     // Input bar
@@ -449,6 +462,18 @@ void MainWindow::onSend()
         emit requestChat(input);
 }
 
+void MainWindow::onCopyOutput()
+{
+    QApplication::clipboard()->setText(m_lastOutput);
+
+    m_copyBtn->setText("Copied!");
+    m_copyBtn->setEnabled(false);
+    QTimer::singleShot(1500, this, [this]() {
+          m_copyBtn->setText("Copy");
+          m_copyBtn->setEnabled(true);
+      });
+}
+
 void MainWindow::onWorkerOutput(const QString& text, const QString& type)
 {
     if (type == "status")
@@ -472,6 +497,11 @@ void MainWindow::onWorkerOutput(const QString& text, const QString& type)
     {
         appendHtml(QString("<p style='color:#e57373;margin:3px 0;'><b>Error:</b> %1</p>")
                    .arg(text.toHtmlEscaped()));
+    }
+
+    if(type == "summary" || type == "anki" || type == "assistant")
+    {
+        m_lastOutput = text;
     }
 }
 
